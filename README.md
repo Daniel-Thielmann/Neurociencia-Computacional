@@ -11,7 +11,7 @@ Simular a dinâmica de um neurônio utilizando o modelo HH em 1D, analisando a i
 O código pode ser executado via terminal utilizando o comando:
 
 ```bash
-$ main.<<ext>> config.txt
+python main.py config.txt
 ```
 
 - **`<<ext>>`**: Substitua pela extensão do código (e.g., `.py`, `.cpp`).
@@ -29,8 +29,8 @@ $ main.<<ext>> config.txt
 
 - **Código-fonte**: Arquivos `.py` para implementação do modelo.
 - **Apresentação**: Arquivo `.pdf` contendo os tópicos abordados.
-- **Documentação**: Arquivo `.pdf` ou no formato web (`html/css/js`) explicando o código.
-- **Configuração**: Arquivo `config.txt` com os parâmetros utilizados na simulação.
+- **Documentação**: Arquivo `.pdf` explicando o código.
+- **Configuração**: Arquivo `config.txt` com informações do projeto.
 
 ## 🚀 Funcionalidades Extras
 
