@@ -99,7 +99,7 @@ def hodgkin_huxley_1D(params):
 
     # Constante difusiva D
     D_base = (a / (2 * R_l)) * (dt / dx**2)
-    D = np.where(Mie == 1, D_base * 10, D_base)
+    D = np.where(Mie == 1, D_base * 5, D_base)
 
     # Iteração temporal
     for t_idx in range(n_t):
@@ -142,6 +142,12 @@ def hodgkin_huxley_1D(params):
             m[x_idx] += dm
             h[x_idx] += dh
 
+        # Handle overflow and NaN values
+        V_new = np.nan_to_num(V_new, nan=0.0, posinf=100.0, neginf=-100.0)
+        n = np.nan_to_num(n, nan=0.0, posinf=1.0, neginf=0.0)
+        m = np.nan_to_num(m, nan=0.0, posinf=1.0, neginf=0.0)
+        h = np.nan_to_num(h, nan=0.0, posinf=1.0, neginf=0.0)
+
         # Atualizar V e armazenar o tempo
         V = V_new
         V_time[t_idx, :] = V
@@ -161,6 +167,10 @@ def save_comparison_plot(V_time, Mie, dx, L_max, filename="comparison.png"):
     plt.ylabel("Potencial de Membrana (mV)")
     plt.legend()
     plt.grid()
+    # Marcar região com mielina em vermelho
+    for i in range(len(Mie)):
+        if Mie[i] == 1:
+            plt.axvspan(i * dx, (i + 1) * dx, color='red', alpha=0.3)
     plt.savefig(filename)
     plt.close()
 
@@ -186,7 +196,7 @@ def save_ion_channel_plot(n, m, h, L_max, dx, filename="ion_channels.png"):
 # Função para criar o GIF
 
 
-def create_hodgkin_huxley_gif(V_time, dx, L_max, dt, y_amplitude=(-100, 100), frame_skip=1, filename="propagacao_potencial1.gif"):
+def create_hodgkin_huxley_gif(V_time, dx, L_max, dt, Mie, y_amplitude=(-100, 100), frame_skip=1, filename="propagacao_potencial1.gif"):
     n_t, _ = V_time.shape
     x = np.linspace(0, L_max, V_time.shape[1])
     y_min, y_max = y_amplitude
@@ -197,15 +207,17 @@ def create_hodgkin_huxley_gif(V_time, dx, L_max, dt, y_amplitude=(-100, 100), fr
         for t_idx in range(0, n_t, frame_skip):
             # print(f"Criando frame {t_idx}/{n_t}...")
             plt.figure(figsize=(10, 6))
-            plt.plot(x, V_time[t_idx, :], label=f"t = {
-                     t_idx * dt:.1f} ms", color="blue")
+            plt.plot(x, V_time[t_idx, :], label=f"t = {t_idx * dt:.1f} ms", color="blue")
             plt.xlabel("Posição x (cm)")
             plt.ylabel("Potencial de membrana V (mV)")
-            plt.title(
-                "Propagação do Potencial de Ação - Modelo de Hodgkin-Huxley 1D")
+            plt.title("Propagação do Potencial de Ação - Modelo de Hodgkin-Huxley 1D")
             plt.ylim(y_min, y_max)
             plt.legend()
             plt.grid()
+            # Marcar região com mielina em vermelho
+            for i in range(len(Mie)):
+                if Mie[i] == 1:
+                    plt.axvspan(i * dx, (i + 1) * dx, color='red', alpha=0.3)
 
             buf = BytesIO()
             plt.savefig(buf, format="png")
@@ -249,12 +261,12 @@ params = parametros_json("parametros.json")
 V_time, n_final, m_final, h_final = hodgkin_huxley_1D(params)
 
 # Gráficos
-# save_comparison_plot(V_time, params.get("Mie", np.zeros(int(
-#     params["L_max"] / params["dx"]) + 1)), params["dx"], params["L_max"], filename="comparison.png")
-# save_ion_channel_plot(n_final, m_final, h_final,
-#                       params["L_max"], params["dx"], filename="ion_channels.png")
-# create_hodgkin_huxley_gif(
-#     V_time, params["dx"], params["L_max"], params["dt"], y_amplitude=(-100, 100), frame_skip=10)
+save_comparison_plot(V_time, params.get("Mie", np.zeros(int(
+    params["L_max"] / params["dx"]) + 1)), params["dx"], params["L_max"], filename="comparison.png")
+save_ion_channel_plot(n_final, m_final, h_final,
+                      params["L_max"], params["dx"], filename="ion_channels.png")
+create_hodgkin_huxley_gif(
+    V_time, params["dx"], params["L_max"], params["dt"], params["Mie"], y_amplitude=(-100, 100), frame_skip=10, filename="propagacao_potencial1.gif")
 
 # Salvar dados em um arquivo CSV
 table_csv(V_time, params["dt"], n_final, m_final, h_final, filename='output.csv')
