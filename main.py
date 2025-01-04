@@ -4,6 +4,7 @@ import imageio
 from io import BytesIO
 import json
 import os
+import sys
 
 # Função para carregar parâmetros de um arquivo JSON
 
@@ -15,6 +16,20 @@ def parametros_json(json_file):
     else:
         raise FileNotFoundError(f"Arquivo '{json_file}' não encontrado.")
     return params
+
+# Função para carregar o arquivo config.txt
+
+
+def le_config_txt(txt_file):
+    config = {}
+    with open(txt_file, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue  # Ignorar comentários e linhas vazias
+            key, value = map(str.strip, line.split("=", 1))
+            config[key] = value
+    return config
 
 # Funções auxiliares para os canais
 
@@ -70,6 +85,7 @@ def hodgkin_huxley_1D(params):
     h0 = params["h0"]
     n0 = params["n0"]
     J = np.array(params["J"])
+    Mie = np.array(params.get("Mie", np.zeros(int(L_max / dx) + 1)))
 
     # Inicializar variáveis
     n_x = int(L_max / dx) + 1
@@ -81,16 +97,15 @@ def hodgkin_huxley_1D(params):
     V_time = np.zeros((n_t, n_x))
 
     # Constante difusiva D
-    D = (a / (2 * R_l)) * (dt / dx**2)
+    D_base = (a / (2 * R_l)) * (dt / dx**2)
+    D = np.where(Mie == 1, D_base * 10, D_base)
 
     # Iteração temporal
     for t_idx in range(n_t):
-
         if t_idx % 100 == 0:
             print(f"Tempo: {t_idx * dt:.2f} ms")
 
         V_new = V.copy()
-
         V_new[0] = V_new[1]
         V_new[-1] = V_new[-2]
 
@@ -110,8 +125,8 @@ def hodgkin_huxley_1D(params):
             I_stim = J[t_idx, x_idx]
 
             # Atualização do potencial usando a equação do cabo
-            dV_dt = (D * (V[x_idx+1] - 2 * V[x_idx] + V[x_idx-1]
-                          ) - (I_Na + I_K + I_L - I_stim) * dt) / C_m
+            dV_dt = (D[x_idx] * (V[x_idx+1] - 2 * V[x_idx] +
+                     V[x_idx-1]) - (I_Na + I_K + I_L - I_stim) * dt) / C_m
             V_new[x_idx] = V[x_idx] + dV_dt
 
             # Atualização dos gates
@@ -130,53 +145,100 @@ def hodgkin_huxley_1D(params):
         V = V_new
         V_time[t_idx, :] = V
 
-    return V_time
+    return V_time, n, m, h
+
+# Função para criar gráficos comparativos
+
+
+def save_comparison_plot(V_time, Mie, dx, L_max, filename="comparison.png"):
+    x = np.linspace(0, L_max, V_time.shape[1])
+    plt.figure(figsize=(12, 6))
+    plt.plot(x, V_time[-1, :], label="Com Mielina")
+    plt.plot(x, V_time[0, :], label="Sem Mielina")
+    plt.title("Comparação do Potencial de Membrana com e sem Bainha de Mielina")
+    plt.xlabel("Posição (cm)")
+    plt.ylabel("Potencial de Membrana (mV)")
+    plt.legend()
+    plt.grid()
+    plt.savefig(filename)
+    plt.close()
+
+# Função para gráficos dos canais iônicos
+
+
+def save_ion_channel_plot(n, m, h, L_max, dx, filename="ion_channels.png"):
+    x = np.linspace(0, L_max, len(n))
+    plt.figure(figsize=(12, 6))
+    plt.plot(x, n, label="Canal n", color="blue", linewidth=2)
+    plt.plot(x, m, label="Canal m", color="orange", linewidth=2)
+    plt.plot(x, h, label="Canal h", color="green", linewidth=2)
+    plt.title("Abertura dos Canais Iônicos")
+    plt.xlabel("Posição (cm)")
+    plt.ylabel("Probabilidade de Abertura")
+    plt.ylim([0, 1])  # Ajusta o intervalo para probabilidades
+    plt.xlim([0, L_max])
+    plt.legend()
+    plt.grid()
+    plt.savefig(filename)
+    plt.close()
 
 # Função para criar o GIF
 
 
-def create_hodgkin_huxley_gif(V_time, dx, L_max, dt, y_amplitude=(-100, 100), frame_skip=1):
+def create_hodgkin_huxley_gif(V_time, dx, L_max, dt, y_amplitude=(-100, 100), frame_skip=1, filename="propagacao_potencial1.gif"):
     n_t, _ = V_time.shape
     x = np.linspace(0, L_max, V_time.shape[1])
     y_min, y_max = y_amplitude
-    frames = []
 
-    for t_idx in range(0, n_t, frame_skip):
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(x, V_time[t_idx, :], label=f"t = {
-                t_idx * dt:.1f} ms", color="blue")
-        ax.set_xlabel("Posição x (cm)")
-        ax.set_ylabel("Potencial de membrana V (mV)")
-        ax.set_title(
-            "Propagação do Potencial de Ação - Modelo de Hodgkin-Huxley 1D")
-        ax.set_ylim(y_min, y_max)
-        ax.legend()
-        ax.grid()
+    print(f"Iniciando geração de frames para o GIF...")
 
-        buf = BytesIO()
-        plt.savefig(buf, format='png')
-        buf.seek(0)
-        frames.append(imageio.v2.imread(buf))
-        buf.close()
-        plt.close(fig)
+    with imageio.get_writer(filename, mode="I", duration=dt * frame_skip / 1000) as writer:
+        for t_idx in range(0, n_t, frame_skip):
+            print(f"Criando frame {t_idx}/{n_t}...")
+            plt.figure(figsize=(10, 6))
+            plt.plot(x, V_time[t_idx, :], label=f"t = {
+                     t_idx * dt:.1f} ms", color="blue")
+            plt.xlabel("Posição x (cm)")
+            plt.ylabel("Potencial de membrana V (mV)")
+            plt.title(
+                "Propagação do Potencial de Ação - Modelo de Hodgkin-Huxley 1D")
+            plt.ylim(y_min, y_max)
+            plt.legend()
+            plt.grid()
 
-    gif_bytes = BytesIO()
-    with imageio.get_writer(gif_bytes, mode="I", duration=dt * frame_skip / 1000, format='GIF') as writer:
-        for frame in frames:
-            writer.append_data(frame)
+            buf = BytesIO()
+            plt.savefig(buf, format="png")
+            buf.seek(0)
+            writer.append_data(imageio.v2.imread(buf))
+            buf.close()
+            plt.close()
 
-    gif_bytes.seek(0)
-    return gif_bytes
+    print(f"GIF gerado com sucesso: {filename}")
 
 
-# Executar a simulação
+# Verificar argumentos da linha de comando
+if len(sys.argv) < 2:
+    print("Uso: python main.py config.txt")
+    sys.exit(1)
+
+# Carregar configurações do config.txt
+config_file = sys.argv[1]
+config = le_config_txt(config_file)
+print(f"Descrição: {config.get('descricao', 'Não especificada')}")
+print(f"Autor: {config.get('autor', 'Não especificado')}")
+print(f"Data: {config.get('data', 'Não especificada')}")
+print(f"Versão: {config.get('versao', 'Não especificada')}")
+
+# Carregar parâmetros do parametros.json
 params = parametros_json("parametros.json")
-V_time = hodgkin_huxley_1D(params)
 
-# Criar e salvar o GIF
-gif_data = create_hodgkin_huxley_gif(
+# Simulação
+V_time, n_final, m_final, h_final = hodgkin_huxley_1D(params)
+
+# Gráficos
+save_comparison_plot(V_time, params.get("Mie", np.zeros(int(
+    params["L_max"] / params["dx"]) + 1)), params["dx"], params["L_max"], filename="comparison.png")
+save_ion_channel_plot(n_final, m_final, h_final,
+                      params["L_max"], params["dx"], filename="ion_channels.png")
+create_hodgkin_huxley_gif(
     V_time, params["dx"], params["L_max"], params["dt"], y_amplitude=(-100, 100), frame_skip=10)
-with open("propagacao_potencial1.gif", "wb") as f:
-    f.write(gif_data.read())
-
-print("GIF salvo como 'propagacao_potencial1.gif'.")
