@@ -5,6 +5,7 @@ from io import BytesIO
 import json
 import os
 import sys
+import csv
 
 # Função para carregar parâmetros de um arquivo JSON
 
@@ -194,7 +195,7 @@ def create_hodgkin_huxley_gif(V_time, dx, L_max, dt, y_amplitude=(-100, 100), fr
 
     with imageio.get_writer(filename, mode="I", duration=dt * frame_skip / 1000) as writer:
         for t_idx in range(0, n_t, frame_skip):
-            print(f"Criando frame {t_idx}/{n_t}...")
+            # print(f"Criando frame {t_idx}/{n_t}...")
             plt.figure(figsize=(10, 6))
             plt.plot(x, V_time[t_idx, :], label=f"t = {
                      t_idx * dt:.1f} ms", color="blue")
@@ -214,6 +215,18 @@ def create_hodgkin_huxley_gif(V_time, dx, L_max, dt, y_amplitude=(-100, 100), fr
             plt.close()
 
     print(f"GIF gerado com sucesso: {filename}")
+
+def table_csv(V_time, dt, n, m, h, filename='output.csv'):
+    print(f"Salvando dados em {filename}...")
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Time', 'V_time', 'n', 'm', 'h'])
+        for i, (V, n_val, m_val, h_val) in enumerate(zip(V_time, n, m, h), start=1):
+            V_str = ','.join(map(str, V))
+            n_str = str(n_val)
+            m_str = str(m_val)
+            h_str = str(h_val)
+            writer.writerow([i*dt, V_str, n_str, m_str, h_str])
 
 
 # Verificar argumentos da linha de comando
@@ -236,9 +249,12 @@ params = parametros_json("parametros.json")
 V_time, n_final, m_final, h_final = hodgkin_huxley_1D(params)
 
 # Gráficos
-save_comparison_plot(V_time, params.get("Mie", np.zeros(int(
-    params["L_max"] / params["dx"]) + 1)), params["dx"], params["L_max"], filename="comparison.png")
-save_ion_channel_plot(n_final, m_final, h_final,
-                      params["L_max"], params["dx"], filename="ion_channels.png")
-create_hodgkin_huxley_gif(
-    V_time, params["dx"], params["L_max"], params["dt"], y_amplitude=(-100, 100), frame_skip=10)
+# save_comparison_plot(V_time, params.get("Mie", np.zeros(int(
+#     params["L_max"] / params["dx"]) + 1)), params["dx"], params["L_max"], filename="comparison.png")
+# save_ion_channel_plot(n_final, m_final, h_final,
+#                       params["L_max"], params["dx"], filename="ion_channels.png")
+# create_hodgkin_huxley_gif(
+#     V_time, params["dx"], params["L_max"], params["dt"], y_amplitude=(-100, 100), frame_skip=10)
+
+# Salvar dados em um arquivo CSV
+table_csv(V_time, params["dt"], n_final, m_final, h_final, filename='output.csv')
