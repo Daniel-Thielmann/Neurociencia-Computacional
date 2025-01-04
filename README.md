@@ -14,9 +14,6 @@ O código pode ser executado via terminal utilizando o comando:
 python main.py config.txt
 ```
 
-- **`<<ext>>`**: Substitua pela extensão do código (e.g., `.py`, `.cpp`).
-- **`config.txt`**: Arquivo de configuração contendo os parâmetros da simulação.
-
 ### Saídas Geradas
 
 1. **Tabela**: Valores em cada instante da simulação.
