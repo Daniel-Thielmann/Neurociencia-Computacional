@@ -18,9 +18,8 @@ python main.py config.txt
 
 1. **Tabela**: Valores em cada instante da simulação.
 2. **GIF**: Gráfico Voltagem x Posição ao longo do tempo.
-3. Outros gráficos e tabelas opcionais, como:
-   - Comparação entre regiões com e sem bainha de mielina.
-   - Gráficos de abertura dos canais iônicos e suas relações.
+3. **Comparação** entre regiões com e sem bainha de mielina.
+4. **Gráficos** de abertura dos canais iônicos e suas relações.
 
 ## 📊 Estrutura do Projeto
 
