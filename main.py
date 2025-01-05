@@ -86,7 +86,7 @@ def hodgkin_huxley_1D(params):
     n0 = params["n0"]
     J = np.array(params["J"])
     Mie = np.array(params.get("Mie", np.zeros(int(L_max / dx) + 1)))
-
+    
     # Inicializar variáveis
     n_x = int(L_max / dx) + 1
     n_t = int(T_max / dt) + 1
@@ -149,6 +149,97 @@ def hodgkin_huxley_1D(params):
 
 # Função para criar gráficos comparativos
 
+def hodgkin_huxley_1D_mie(params):
+    # Extrair parâmetros
+    C_m = params["cm"]
+    a = params["a"]
+    R_l = params["rl"]
+    g_Na = params["gna"]
+    g_K = params["gk"]
+    g_L = params["gl"]
+    E_Na = params["ena"]
+    E_K = params["ek"]
+    E_L = params["el"]
+    T_max = params["T_max"]
+    L_max = params["L_max"]
+    dt = params["dt"]
+    dx = params["dx"]
+    V_m0 = params["vm0"]
+    m0 = params["m0"]
+    h0 = params["h0"]
+    n0 = params["n0"]
+    J = np.array(params["J"])
+    Mie = np.array(params.get("Mie", np.zeros(int(L_max / dx) + 1)))
+    print(Mie.shape)
+    Mie[20:40] = 1  # Regiões mielinizadas entre 50 e 150
+
+    # Inicializar variáveis
+    n_x = int(L_max / dx) + 1
+    n_t = int(T_max / dt) + 1
+    V = np.ones(n_x) * V_m0
+    n = np.ones(n_x) * n0
+    m = np.ones(n_x) * m0
+    h = np.ones(n_x) * h0
+    V_time = np.zeros((n_t, n_x))
+
+    # Constante difusiva D
+    D_base = (a / (2 * R_l)) * (dt / dx**2)
+    D = np.where(Mie == 1, D_base * 10, D_base)  # Aumentar D nas regiões mielinizadas
+
+    # Ajustar capacitância e condutâncias para mielina
+    C_m_array = np.where(Mie == 1, C_m / 10, C_m)
+    g_Na_array = np.where(Mie == 1, g_Na / 10, g_Na)
+    g_K_array = np.where(Mie == 1, g_K / 10, g_K)
+    g_L_array = np.where(Mie == 1, g_L / 10, g_L)
+
+    # Iteração temporal
+    for t_idx in range(n_t):
+        if t_idx % 100 == 0:
+            print(f"Tempo: {t_idx * dt:.2f} ms")
+
+        V_new = V.copy()
+        V_new[0] = V_new[1]
+        V_new[-1] = V_new[-2]
+
+        n[0] = n[1]
+        m[0] = m[1]
+        h[0] = h[1]
+
+        n[-1] = n[-2]
+        m[-1] = m[-2]
+        h[-1] = h[-2]
+
+        for x_idx in range(1, n_x - 1):
+            # Correntes iônicas
+            I_Na = g_Na_array[x_idx] * m[x_idx]**3 * h[x_idx] * (V[x_idx] - E_Na)
+            I_K = g_K_array[x_idx] * n[x_idx]**4 * (V[x_idx] - E_K)
+            I_L = g_L_array[x_idx] * (V[x_idx] - E_L)
+            I_stim = J[t_idx, x_idx]
+
+            # Atualização do potencial usando a equação do cabo
+            dV_dt = (D[x_idx] * (V[x_idx+1] - 2 * V[x_idx] +
+                     V[x_idx-1]) - (I_Na + I_K + I_L - I_stim) * dt) / C_m_array[x_idx]
+            V_new[x_idx] = V[x_idx] + dV_dt
+
+            # Atualização dos gates
+            dn = (alpha_n(V[x_idx]) * (1 - n[x_idx]) -
+                  beta_n(V[x_idx]) * n[x_idx]) * dt
+            dm = (alpha_m(V[x_idx]) * (1 - m[x_idx]) -
+                  beta_m(V[x_idx]) * m[x_idx]) * dt
+            dh = (alpha_h(V[x_idx]) * (1 - h[x_idx]) -
+                  beta_h(V[x_idx]) * h[x_idx]) * dt
+
+            n[x_idx] += dn
+            m[x_idx] += dm
+            h[x_idx] += dh
+
+        # Atualizar V e armazenar o tempo
+        V = V_new
+        V_time[t_idx, :] = V
+
+    return V_time, n, m, h
+
+
 
 def save_comparison_plot(V_time, Mie, dx, L_max, filename="comparison.png"):
     x = np.linspace(0, L_max, V_time.shape[1])
@@ -192,7 +283,7 @@ def create_hodgkin_huxley_gif(V_time, dx, L_max, dt, y_amplitude=(-100, 100), fr
 
     print(f"Iniciando geração de frames para o GIF...")
 
-    with imageio.get_writer(filename, mode="I", duration=dt * frame_skip / 1000) as writer:
+    with imageio.get_writer(filename, mode="I", duration=dt * frame_skip / 10000) as writer:
         for t_idx in range(0, n_t, frame_skip):
             print(f"Criando frame {t_idx}/{n_t}...")
             plt.figure(figsize=(10, 6))
@@ -232,13 +323,27 @@ print(f"Versão: {config.get('versao', 'Não especificada')}")
 # Carregar parâmetros do parametros.json
 params = parametros_json("parametros.json")
 
+
+n_x = int(params["L_max"] / params["dx"]) + 1
+n_t = int(params["T_max"] / params["dt"]) + 1
+
+# Inicializando J como zeros (ou baseado em algum padrão de estimulação)
+params["J"] = np.zeros((n_t, n_x))
+
+params["J"][:, 1] = 20  # Estímulo de 50 µA/cm²
+
 # Simulação
 V_time, n_final, m_final, h_final = hodgkin_huxley_1D(params)
+V_time_mie, n_final_mie, m_final_mie, h_final_mie = hodgkin_huxley_1D_mie(params)
+
 
 # Gráficos
-save_comparison_plot(V_time, params.get("Mie", np.zeros(int(
-    params["L_max"] / params["dx"]) + 1)), params["dx"], params["L_max"], filename="comparison.png")
+save_comparison_plot(V_time,V_time_mie, params["dx"], params["L_max"], filename="comparison.png")
 save_ion_channel_plot(n_final, m_final, h_final,
                       params["L_max"], params["dx"], filename="ion_channels.png")
+save_ion_channel_plot(n_final_mie, m_final_mie, h_final_mie,
+                      params["L_max"], params["dx"], filename="ion_channels_mielina.png")
 create_hodgkin_huxley_gif(
-    V_time, params["dx"], params["L_max"], params["dt"], y_amplitude=(-100, 100), frame_skip=10)
+    V_time, params["dx"], params["L_max"], params["dt"], y_amplitude=(-100, 100), frame_skip=100)
+create_hodgkin_huxley_gif(
+    V_time_mie, params["dx"], params["L_max"], params["dt"], y_amplitude=(-100, 100), frame_skip=100,filename="propagacao_potencial_mielina.gif")
