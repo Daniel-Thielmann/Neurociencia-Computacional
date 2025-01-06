@@ -17,12 +17,12 @@
     "h0": 0.5961,
     "n0": 0.3177,
     "J": {
-        "inicio": 0.05,
-        "fim": 0.05,
+        "inicioX": 0.05,
+        "fimX": 0.05,
         "valor": 20
     },
     "Mie": {
-        "inicio": 1,
-        "fim": 2
+        "inicioX": 1,
+        "fimX": 2
     }
 }   

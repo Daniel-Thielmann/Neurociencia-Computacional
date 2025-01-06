@@ -330,8 +330,8 @@ if type(params["J"]) == dict:
     n_t = int(params["T_max"] / params["dt"]) + 1
 
     # Inicializando J como zeros (ou baseado em algum padrão de estimulação)
-    position_init =  int(params["J"]["inicio"]/params["dx"])
-    position_final = int(params["J"]["fim"]/params["dx"])
+    position_init =  int(params["J"]["inicioX"]/params["dx"])
+    position_final = int(params["J"]["fimX"]/params["dx"])
     valor = params["J"]["valor"]
     params["J"] = np.zeros((n_t, n_x))
 
@@ -341,8 +341,8 @@ if type(params["J"]) == dict:
         params["J"][:, position_init:position_final] = valor  # Estímulo de ? µA/cm²
 
 if type(params["Mie"]) == dict:
-    position_init =  int(params["Mie"]["inicio"]/params["dx"])
-    position_final = int(params["Mie"]["fim"]/params["dx"])
+    position_init =  int(params["Mie"]["inicioX"]/params["dx"])
+    position_final = int(params["Mie"]["fimX"]/params["dx"])
     params["Mie"] = np.zeros(int(params["L_max"] / params["dx"]) + 1)
     if position_init == position_final:
         params["Mie"][position_init] = 1  # Estímulo de ? µA/cm²
