@@ -350,6 +350,12 @@ if type(params["Mie"]) == dict:
         params["Mie"][position_init:position_final] = 1  # Estímulo de ? µA/cm²
 
 
+
+params["J"] = params["J"].tolist()
+params["Mie"] = params["Mie"].tolist()
+with open("parametros.json", "w") as arquivo:
+    json.dump(params, arquivo, indent=4)
+
 V_time, n_final, m_final, h_final = hodgkin_huxley_1D(params)
 V_time_mie, n_final_mie, m_final_mie, h_final_mie = hodgkin_huxley_1D_mie(params)
 
