@@ -3,3 +3,4 @@ descricao = Simulacao do modelo Hodgkin-Huxley 1D
 autor = Daniel Thielmann, Gustavo Martins, Hiero Costa
 data = 04/01/2025
 versao = 1.0
+parametros = parametros2.json

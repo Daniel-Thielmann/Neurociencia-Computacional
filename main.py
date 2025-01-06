@@ -85,6 +85,7 @@ def hodgkin_huxley_1D(params):
     h0 = params["h0"]
     n0 = params["n0"]
     J = np.array(params["J"])
+
     Mie = np.array(params.get("Mie", np.zeros(int(L_max / dx) + 1)))
     
     # Inicializar variáveis
@@ -169,9 +170,8 @@ def hodgkin_huxley_1D_mie(params):
     h0 = params["h0"]
     n0 = params["n0"]
     J = np.array(params["J"])
-    Mie = np.array(params.get("Mie", np.zeros(int(L_max / dx) + 1)))
-    print(Mie.shape)
-    Mie[20:40] = 1  # Regiões mielinizadas entre 50 e 150
+    Mie = params["Mie"]
+    
 
     # Inicializar variáveis
     n_x = int(L_max / dx) + 1
@@ -319,20 +319,37 @@ print(f"Descrição: {config.get('descricao', 'Não especificada')}")
 print(f"Autor: {config.get('autor', 'Não especificado')}")
 print(f"Data: {config.get('data', 'Não especificada')}")
 print(f"Versão: {config.get('versao', 'Não especificada')}")
+print(f"Parâmetros: {config.get('parametros', 'Não especificada')}")
+json_file = config.get('parametros', 'Não especificada')
 
 # Carregar parâmetros do parametros.json
-params = parametros_json("parametros.json")
+params = parametros_json(json_file)
+
+if type(params["J"]) == dict:
+    n_x = int(params["L_max"] / params["dx"]) + 1
+    n_t = int(params["T_max"] / params["dt"]) + 1
+
+    # Inicializando J como zeros (ou baseado em algum padrão de estimulação)
+    position_init =  int(params["J"]["inicio"]/params["dx"])
+    position_final = int(params["J"]["fim"]/params["dx"])
+    valor = params["J"]["valor"]
+    params["J"] = np.zeros((n_t, n_x))
+
+    if position_init == position_final:
+        params["J"][:, position_init] = valor  # Estímulo de ? µA/cm²
+    else:
+        params["J"][:, position_init:position_final] = valor  # Estímulo de ? µA/cm²
+
+if type(params["Mie"]) == dict:
+    position_init =  int(params["Mie"]["inicio"]/params["dx"])
+    position_final = int(params["Mie"]["fim"]/params["dx"])
+    params["Mie"] = np.zeros(int(params["L_max"] / params["dx"]) + 1)
+    if position_init == position_final:
+        params["Mie"][position_init] = 1  # Estímulo de ? µA/cm²
+    else:
+        params["Mie"][position_init:position_final] = 1  # Estímulo de ? µA/cm²
 
 
-n_x = int(params["L_max"] / params["dx"]) + 1
-n_t = int(params["T_max"] / params["dt"]) + 1
-
-# Inicializando J como zeros (ou baseado em algum padrão de estimulação)
-params["J"] = np.zeros((n_t, n_x))
-
-params["J"][:, 1] = 20  # Estímulo de 50 µA/cm²
-
-# Simulação
 V_time, n_final, m_final, h_final = hodgkin_huxley_1D(params)
 V_time_mie, n_final_mie, m_final_mie, h_final_mie = hodgkin_huxley_1D_mie(params)
 
