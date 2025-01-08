@@ -323,6 +323,19 @@ def create_hodgkin_huxley_gif(V_time, Mie, dx, L_max, dt, y_amplitude=(-100, 100
     print(f"GIF gerado com sucesso: {filename}")
 
 
+
+def table_csv(V_time, dt, n, m, h, filename='output.csv'):
+    print(f"Salvando dados em {filename}...")
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Time', 'V_time', 'n', 'm', 'h'])
+        for i, (V, n_val, m_val, h_val) in enumerate(zip(V_time, n, m, h), start=1):
+            V_str = ','.join(map(str, V))
+            n_str = str(n_val)
+            m_str = str(m_val)
+            h_str = str(h_val)
+            writer.writerow([i*dt, V_str, n_str, m_str, h_str])
+
 # Verificar argumentos da linha de comando
 if len(sys.argv) < 2:
     print("Uso: python main.py config.txt")
@@ -370,6 +383,9 @@ V_time, n_final, m_final, h_final = hodgkin_huxley_1D(params)
 V_time_mie, n_final_mie, m_final_mie, h_final_mie = hodgkin_huxley_1D_mie(
     params)
 
+
+
+
 Mie = np.zeros(int(params["L_max"] / params["dx"]) + 1)
 # Gráficos
 # save_comparison_plot(V_time,V_time_mie, params["dx"], params["L_max"], filename="comparison.png")
@@ -381,3 +397,6 @@ create_hodgkin_huxley_gif(
     V_time, Mie, params["dx"], params["L_max"], params["dt"], y_amplitude=(-100, 100), frame_skip=int(1/params["dt"]))
 create_hodgkin_huxley_gif(
     V_time_mie, params["Mie"], params["dx"], params["L_max"], params["dt"], y_amplitude=(-100, 100), frame_skip=int(1/params["dt"]), filename="propagacao_potencial_mielina.gif")
+
+table_csv(V_time, params["dt"], n_final, m_final, h_final, filename='output.csv')
+table_csv(V_time_mie, params["dt"], n_final_mie, m_final_mie, h_final_mie, filename='outputMie.csv')
