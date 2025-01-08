@@ -9,6 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import imageio
 from io import BytesIO
+import csv
+
 # Função para carregar parâmetros de um arquivo JSON
 
 
