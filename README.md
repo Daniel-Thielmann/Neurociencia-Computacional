@@ -21,6 +21,9 @@ python main.py config.txt
 3. **Comparação** entre regiões com e sem bainha de mielina.
 4. **Gráficos** de abertura dos canais iônicos e suas relações.
 
+![Propagação Potencial de Ação](/propagacao_potencial1.gif)
+![Propagação Potencial de Ação com Bainha de Mielina](/propagacao_potencial_mielina.gif)
+
 ## 📊 Estrutura do Projeto
 
 - **Código-fonte**: Arquivos `.py` para implementação do modelo.
